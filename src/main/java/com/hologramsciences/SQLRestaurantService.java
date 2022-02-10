@@ -71,10 +71,10 @@ public class SQLRestaurantService {
 
 
         final String query = String.join("\n"
-                ,
-                " select * from restaurants res"
-                , " inner join (select count(1), r.id from restaurants r inner join menu_items mi on mi.restaurant_id = r.id group by r.id having count(1) >= ?) data"
-                , " on data.id = res.id"
+                , " select count(1), r.id, r.name "
+                , " from restaurants r "
+                , " inner join menu_items mi on mi.restaurant_id = r.id "
+                , " group by r.id, r.name having count(1) >= ?"
         );
 
         return runQueryAndParseRestaurants(query, menuSize);
