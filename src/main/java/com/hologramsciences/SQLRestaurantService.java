@@ -26,8 +26,6 @@ public class SQLRestaurantService {
 
     /**
      *
-     *  TODO:  Implement Me
-     *
      *  Read the schema from src/main/resources/schema.sql
      *
      *  Write a prepared SQL statement (with safe variable replacement) which returns all the restaurants that are open for the given DayOfWeek and LocalTime
@@ -59,8 +57,6 @@ public class SQLRestaurantService {
     }
 
     /**
-     *
-     *  TODO:  Implement Me
      *
      *  Read the schema from src/main/resources/schema.sql
      *

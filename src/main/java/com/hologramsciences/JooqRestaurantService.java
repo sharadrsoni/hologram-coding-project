@@ -31,8 +31,6 @@ public class JooqRestaurantService {
 
     /**
      *
-     * TODO: Implement me
-     *
      *  NOTE:  This method should have the same logic as SQLRestaurantService.getOpenRestaurants, but should use the Jooq SQL DSL:
      *
      *  https://www.jooq.org/doc/3.13/manual-single-page/#select-statement
@@ -62,8 +60,6 @@ public class JooqRestaurantService {
     }
 
     /**
-     *
-     *  TODO: Implement me
      *
      *  NOTE:  This method should have the same logic as SQLRestaurantService.getRestaurantsWithMenuOfSizeGreaterThanOrEqualTo, but should use the Jooq SQL DSL:
      *

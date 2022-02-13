@@ -1,6 +1,7 @@
 package com.hologramsciences;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Algorithms {
     /**
@@ -32,9 +33,7 @@ public class Algorithms {
      *
      *
      */
-    public static final <T> List<List<T>> cartesianProductForLists(final List<List<T>> listOfLists) {
-        // TODO Implement me
-
+    public static <T> List<List<T>> cartesianProductForLists(final List<List<T>> listOfLists) {
         List<List<T>> result = new ArrayList<>();
         List<T> firstRow = listOfLists.get(0);
         for (T t : firstRow) {
@@ -71,8 +70,7 @@ public class Algorithms {
      *  Assuming you have an unlimited supply of each coin,
      *  implement a method which returns the number of distinct ways to make totalCents
      */
-    public static final long countNumWaysMakeChange(final int totalCents) {
-        // TODO Implement me
+    public static long countNumWaysMakeChange(final int totalCents) {
         final int[] coins = new int[]{1,5,10,25,50,100};
         long[][] valueData = new long[coins.length+1][totalCents+1];
         for(int coinIndex = 0; coinIndex <= coins.length; coinIndex++) {

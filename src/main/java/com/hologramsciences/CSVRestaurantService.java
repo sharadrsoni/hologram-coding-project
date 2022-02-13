@@ -20,7 +20,6 @@ public class CSVRestaurantService {
     private final List<Restaurant> restaurantList;
 
     /**
-     * TODO: Implement Me
      *
      * From the CSVRecord which represents a single line from src/main/resources/rest_hours.csv
      * Write a parser to read the line and create an instance of the Restaurant class (Optionally, using the Option class)
@@ -66,7 +65,7 @@ public class CSVRestaurantService {
     }
 
     /**
-     * TODO: Implement me, This is a useful helper method
+     * This is a useful helper method
      */
     public static Map<DayOfWeek, Restaurant.OpenHours> parseOpenHour(final String openHoursString) {
         Map<DayOfWeek, Restaurant.OpenHours> restaurantTimings = new EnumMap<>(DayOfWeek.class);
@@ -96,8 +95,6 @@ public class CSVRestaurantService {
     }
 
     /**
-     *
-     *  TODO: Implement me
      *
      *  A restaurant is considered open when the OpenHours for the dayOfWeek has:
      *
