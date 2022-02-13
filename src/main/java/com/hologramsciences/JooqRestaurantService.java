@@ -19,16 +19,17 @@ import org.jooq.meta.jaxb.Target;
 
 import com.hologramsciences.jooq.tables.records.RestaurantsRecord;
 
+import static com.hologramsciences.jooq.tables.MenuItems.MENU_ITEMS;
+import static com.hologramsciences.jooq.tables.OpenHours.OPEN_HOURS;
 import static com.hologramsciences.jooq.tables.Restaurants.RESTAURANTS;
 import static java.time.temporal.ChronoField.MINUTE_OF_DAY;
+import static org.jooq.impl.DSL.count;
 
 public class JooqRestaurantService {
 
     private final SQLRestaurantService sqlRestaurantService = new SQLRestaurantService();
 
     /**
-     *
-     * TODO: Implement me
      *
      *  NOTE:  This method should have the same logic as SQLRestaurantService.getOpenRestaurants, but should use the Jooq SQL DSL:
      *
@@ -39,17 +40,26 @@ public class JooqRestaurantService {
     public List<RestaurantsRecord> getOpenRestaurants(final DayOfWeek dayOfWeek, final LocalTime localTime) throws SQLException {
         final String dayOfWeekString = dayOfWeek.toString();
         final Integer minuteOfDay    = localTime.get(MINUTE_OF_DAY);
+        final DayOfWeek previousDayOfWeek = dayOfWeek.minus(1);
+        final String previousDayOfWeekString = previousDayOfWeek.toString();
 
-        return withDSLContext(create -> {
-            return create
-                    .selectFrom(RESTAURANTS)
-                    .fetch();
-        });
+        return withDSLContext(create -> create
+                    .selectDistinct(RESTAURANTS.ID, RESTAURANTS.NAME)
+                    .from(RESTAURANTS)
+                    .join(OPEN_HOURS).on(OPEN_HOURS.RESTAURANT_ID.eq(RESTAURANTS.ID))
+                    .where((OPEN_HOURS.START_TIME_MINUTE_OF_DAY.lessOrEqual(minuteOfDay)
+                            .and(OPEN_HOURS.END_TIME_MINUTE_OF_DAY.greaterOrEqual(minuteOfDay)
+                            .and(OPEN_HOURS.DAY_OF_WEEK.eq(dayOfWeekString))))
+                            .or((OPEN_HOURS.START_TIME_MINUTE_OF_DAY.ne(0).and(OPEN_HOURS.END_TIME_MINUTE_OF_DAY.ne(0)))
+                            .and(OPEN_HOURS.START_TIME_MINUTE_OF_DAY.minus(OPEN_HOURS.END_TIME_MINUTE_OF_DAY).gt(0).and(OPEN_HOURS.DAY_OF_WEEK.eq(previousDayOfWeekString)))
+                            .and((OPEN_HOURS.START_TIME_MINUTE_OF_DAY.le(minuteOfDay).and(OPEN_HOURS.END_TIME_MINUTE_OF_DAY.lt(minuteOfDay)))
+                                    .or(OPEN_HOURS.START_TIME_MINUTE_OF_DAY.gt(minuteOfDay).and(OPEN_HOURS.END_TIME_MINUTE_OF_DAY.gt(minuteOfDay)))))
+                    )
+                    .fetchInto(RESTAURANTS)
+        );
     }
 
     /**
-     *
-     *  TODO: Implement me
      *
      *  NOTE:  This method should have the same logic as SQLRestaurantService.getRestaurantsWithMenuOfSizeGreaterThanOrEqualTo, but should use the Jooq SQL DSL:
      *
@@ -57,11 +67,14 @@ public class JooqRestaurantService {
      *
      */
     public List<RestaurantsRecord> getRestaurantsWithMenuOfSizeGreaterThanOrEqualTo(final Integer menuSize) throws SQLException {
-        return withDSLContext(create -> {
-            return create
-                    .selectFrom(RESTAURANTS)
-                    .fetch();
-        });
+        return withDSLContext(create -> create
+                    .select(RESTAURANTS.ID, RESTAURANTS.NAME, count())
+                    .from(RESTAURANTS)
+                    .join(MENU_ITEMS).on(MENU_ITEMS.RESTAURANT_ID.eq(RESTAURANTS.ID))
+                    .groupBy(RESTAURANTS.ID, RESTAURANTS.NAME)
+                    .having(count().ge(menuSize))
+                    .fetchInto(RESTAURANTS)
+        );
     }
 
     public <T> T withDSLContext(final Function<DSLContext, T> function) throws SQLException {

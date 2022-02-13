@@ -26,8 +26,6 @@ public class SQLRestaurantService {
 
     /**
      *
-     *  TODO:  Implement Me
-     *
      *  Read the schema from src/main/resources/schema.sql
      *
      *  Write a prepared SQL statement (with safe variable replacement) which returns all the restaurants that are open for the given DayOfWeek and LocalTime
@@ -38,9 +36,6 @@ public class SQLRestaurantService {
     public List<RestaurantRecord> getOpenRestaurants(final DayOfWeek dayOfWeek, final LocalTime localTime) throws SQLException {
         final String dayOfWeekString = dayOfWeek.toString();
 
-        final DayOfWeek nextDayOfWeek = dayOfWeek.plus(1);
-        final String nextDayOfWeekString = nextDayOfWeek.toString();
-
         final DayOfWeek previousDayOfWeek = dayOfWeek.minus(1);
         final String previousDayOfWeekString = previousDayOfWeek.toString();
 
@@ -49,19 +44,19 @@ public class SQLRestaurantService {
 
         final String query = String.join("\n"
                 ,
-                 "select * from restaurants"
-                , ""
-                , ""
-                , ""
-                , ""
+                 "select distinct r.id, r.name from restaurants r"
+                , " inner join open_hours oh on oh.restaurant_id = r.id"
+                , " where (start_time_minute_of_day <= ? and end_time_minute_of_day >= ? and day_of_week = ?)"
+                , " or ((start_time_minute_of_day != 0 and end_time_minute_of_day != 0)"
+                , " and start_time_minute_of_day - end_time_minute_of_day > 0 and day_of_week = ? "
+                , " and ((start_time_minute_of_day <= ? and end_time_minute_of_day < ?)"
+                , " or (start_time_minute_of_day > ? and end_time_minute_of_day > ?)))"
         );
 
-        return runQueryAndParseRestaurants(query, dayOfWeekString, minuteOfDay);
+        return runQueryAndParseRestaurants(query, minuteOfDay, minuteOfDay, dayOfWeekString, previousDayOfWeekString, minuteOfDay, minuteOfDay, minuteOfDay, minuteOfDay);
     }
 
     /**
-     *
-     *  TODO:  Implement Me
      *
      *  Read the schema from src/main/resources/schema.sql
      *
@@ -72,12 +67,10 @@ public class SQLRestaurantService {
 
 
         final String query = String.join("\n"
-                ,
-                " select * from restaurants"
-                , ""
-                , ""
-                , ""
-                , ""
+                , " select count(1), r.id, r.name "
+                , " from restaurants r "
+                , " inner join menu_items mi on mi.restaurant_id = r.id "
+                , " group by r.id, r.name having count(1) >= ?"
         );
 
         return runQueryAndParseRestaurants(query, menuSize);
@@ -89,7 +82,7 @@ public class SQLRestaurantService {
             return Collections.emptyList();
         }
 
-        final String inList = StringUtils.join(ids.stream().map(x -> x.toString()).collect(Collectors.toList()), ",");
+        final String inList = StringUtils.join(ids.stream().map(Object::toString).collect(Collectors.toList()), ",");
         return runQueryAndParseRestaurants("select * from restaurants where id in (" + inList + ")");
     }
 

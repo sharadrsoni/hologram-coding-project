@@ -1,25 +1,25 @@
 package com.hologramsciences;
 
+import io.atlassian.fugue.Option;
+import org.apache.commons.csv.CSVRecord;
+
 import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoField;
-import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringTokenizer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import org.apache.commons.csv.CSVRecord;
-
-import io.atlassian.fugue.Option;
 
 public class CSVRestaurantService {
     private final List<Restaurant> restaurantList;
 
     /**
-     * TODO: Implement Me
      *
      * From the CSVRecord which represents a single line from src/main/resources/rest_hours.csv
      * Write a parser to read the line and create an instance of the Restaurant class (Optionally, using the Option class)
@@ -57,14 +57,33 @@ public class CSVRestaurantService {
      *
      */
     public static Option<Restaurant> parse(final CSVRecord r) {
-        return Option.none();
+        try {
+            return Option.some(new Restaurant(r.get(0), parseOpenHour(r.get(1))));
+        } catch (UnsupportedOperationException | IndexOutOfBoundsException exception) {
+            return Option.none();
+        }
     }
 
     /**
-     * TODO: Implement me, This is a useful helper method
+     * This is a useful helper method
      */
-    public static Map<DayOfWeek, Restaurant.OpenHours> parseOpenHour(final String openhoursString) {
-        return Collections.emptyMap();
+    public static Map<DayOfWeek, Restaurant.OpenHours> parseOpenHour(final String openHoursString) {
+        Map<DayOfWeek, Restaurant.OpenHours> restaurantTimings = new EnumMap<>(DayOfWeek.class);
+        StringTokenizer tokenizer = new StringTokenizer(openHoursString, ";");
+        while (tokenizer.hasMoreTokens()) {
+            StringTokenizer perDayTime = new StringTokenizer(tokenizer.nextToken(), "|");
+            StringTokenizer days = new StringTokenizer(perDayTime.nextToken(), ",");
+            StringTokenizer timing = new StringTokenizer(perDayTime.nextToken(), "-");
+            String startTme = timing.nextToken();
+            String endTime = timing.nextToken();
+            if(startTme.equals(endTime)) {
+                throw new UnsupportedOperationException("Start time and end time are same");
+            }
+            while(days.hasMoreTokens()) {
+                restaurantTimings.put(getDayOfWeek(days.nextToken()).get(), new Restaurant.OpenHours(LocalTime.parse(startTme), LocalTime.parse(endTime)));
+            }
+        }
+        return restaurantTimings;
     }
 
     public CSVRestaurantService() throws IOException {
@@ -76,8 +95,6 @@ public class CSVRestaurantService {
     }
 
     /**
-     *
-     *  TODO: Implement me
      *
      *  A restaurant is considered open when the OpenHours for the dayOfWeek has:
      *
@@ -101,7 +118,15 @@ public class CSVRestaurantService {
      *
      */
     public List<Restaurant> getOpenRestaurants(final DayOfWeek dayOfWeek, final LocalTime localTime) {
-        return Collections.emptyList();
+        return getAllRestaurants().stream().filter(o -> {
+            if (localTime.compareTo(LocalTime.parse("00:00")) >= 0 && localTime.compareTo(LocalTime.parse("05:00")) <= 0) {
+                Restaurant.OpenHours openHours = o.getOpenHoursMap().get(dayOfWeek.minus(1));
+                return openHours != null && openHours.spansMidnight() && (openHours.getStartTime().compareTo(localTime) <= 0 || openHours.getEndTime().compareTo(localTime) >= 0);
+            } else {
+                Restaurant.OpenHours openHours = o.getOpenHoursMap().get(dayOfWeek);
+                return openHours != null && openHours.getStartTime().compareTo(localTime) <= 0 && openHours.getEndTime().compareTo(localTime) >= 0;
+            }
+        }).collect(Collectors.toList());
     }
 
     public List<Restaurant> getOpenRestaurantsForLocalDateTime(final LocalDateTime localDateTime) {
@@ -110,27 +135,28 @@ public class CSVRestaurantService {
 
     public static Option<DayOfWeek> getDayOfWeek(final String s) {
 
-        if (s.equals("Mon")) {
-            return Option.some(DayOfWeek.MONDAY);
-        } else if (s.equals("Tue")) {
-            return Option.some(DayOfWeek.TUESDAY);
-        } else if (s.equals("Wed")) {
-            return Option.some(DayOfWeek.WEDNESDAY);
-        } else if (s.equals("Thu")) {
-            return Option.some(DayOfWeek.THURSDAY);
-         } else if (s.equals("Fri")) {
-            return Option.some(DayOfWeek.FRIDAY);
-        } else if (s.equals("Sat")) {
-            return Option.some(DayOfWeek.SATURDAY);
-        } else if (s.equals("Sun")) {
-            return Option.some(DayOfWeek.SUNDAY);
-        } else {
-            return Option.none();
+        switch (s) {
+            case "Mon":
+                return Option.some(DayOfWeek.MONDAY);
+            case "Tue":
+                return Option.some(DayOfWeek.TUESDAY);
+            case "Wed":
+                return Option.some(DayOfWeek.WEDNESDAY);
+            case "Thu":
+                return Option.some(DayOfWeek.THURSDAY);
+            case "Fri":
+                return Option.some(DayOfWeek.FRIDAY);
+            case "Sat":
+                return Option.some(DayOfWeek.SATURDAY);
+            case "Sun":
+                return Option.some(DayOfWeek.SUNDAY);
+            default:
+                return Option.none();
         }
     }
 
     public static <S, T> Function<S, Stream<T>> toStreamFunc(final Function<S, Option<T>> function) {
-        return s -> function.apply(s).fold(() -> Stream.empty(), t -> Stream.of(t));
+        return s -> function.apply(s).fold(Stream::empty, Stream::of);
     }
 
     /**
@@ -141,14 +167,13 @@ public class CSVRestaurantService {
 
         csvRestaurantService.getAllRestaurants().forEach(restaurant -> {
 
-            final String name = restaurant.getName().replaceAll("'", "''");
+            final String name = restaurant.getName().replace("'", "''");
 
             System.out.println("INSERT INTO restaurants (name) values ('" + name  + "');");
 
-            restaurant.getOpenHoursMap().entrySet().forEach(entry -> {
-                final DayOfWeek dayOfWeek = entry.getKey();
-                final LocalTime startTime = entry.getValue().getStartTime();
-                final LocalTime endTime   = entry.getValue().getEndTime();
+            restaurant.getOpenHoursMap().forEach((dayOfWeek, value) -> {
+                final LocalTime startTime = value.getStartTime();
+                final LocalTime endTime = value.getEndTime();
 
                 System.out.println("INSERT INTO open_hours (restaurant_id, day_of_week, start_time_minute_of_day, end_time_minute_of_day) select id, '" + dayOfWeek.toString() + "', " + startTime.get(ChronoField.MINUTE_OF_DAY) + ", " + endTime.get(ChronoField.MINUTE_OF_DAY) + " from restaurants where name = '" + name + "';");
 
